@@ -834,6 +834,22 @@ function handleGates() {
 
 function applyServerState(serverState) {
   const localHasSessions = state.sessions && state.sessions.length > 0;
+  const serverSessions = serverState.sessions || [];
+  if (localHasSessions && serverSessions.length < state.sessions.length) {
+    return;
+  }
+  if (localHasSessions && serverSessions.length) {
+    const localIds = new Set(state.sessions.map((s) => s.id));
+    const serverIds = new Set(serverSessions.map((s) => s.id));
+    let missing = false;
+    for (const id of localIds) {
+      if (!serverIds.has(id)) {
+        missing = true;
+        break;
+      }
+    }
+    if (missing) return;
+  }
   if (!serverState.lastUpdated && localHasSessions && (!serverState.sessions || serverState.sessions.length === 0)) {
     return;
   }
