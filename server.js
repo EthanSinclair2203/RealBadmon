@@ -210,7 +210,7 @@ const server = http.createServer(async (req, res) => {
       if (!nextState) return json(res, 400, { error: "Unknown action" });
       const baseSessions = baseState.sessions || [];
       const nextSessions = nextState.sessions || [];
-      if (baseSessions.length && nextSessions.length < baseSessions.length && body.action !== "resetState") {
+      if (baseSessions.length && nextSessions.length < baseSessions.length && !["resetState", "deleteSession"].includes(body.action)) {
         return json(res, 200, { teamCode: code, state: baseState, ignored: true });
       }
       nextState.lastUpdated = new Date().toISOString();
