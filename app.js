@@ -253,7 +253,9 @@ function render() {
   if (statusEl) {
     const localCount = state.sessions ? state.sessions.length : 0;
     const serverCount = state.lastServerSessions ?? 0;
-    statusEl.textContent = state.syncStatus === "error" ? `Sync error` : `Sync ok (${localCount}/${serverCount})`;
+    statusEl.textContent = state.syncStatus === "error"
+      ? `Sync error${state.syncError ? `: ${state.syncError}` : ""}`
+      : `Sync ok (${localCount}/${serverCount})`;
     statusEl.className = `user-pill ${state.syncStatus === "error" ? "pill-error" : "pill-ok"}`;
   }
   renderSessions();
@@ -911,7 +913,12 @@ async function apiAction(action, data) {
       state.syncStatus = "error";
       return null;
     }
-    const payload = await res.json();
+    const payload = await res.json().catch(() => null);
+    if (payload?.error) {
+      state.syncStatus = "error";
+      state.syncError = payload.error;
+      return null;
+    }
     if (payload?.state) {
       applyServerState(payload.state);
       state.lastServerSessions = payload.state.sessions ? payload.state.sessions.length : 0;
