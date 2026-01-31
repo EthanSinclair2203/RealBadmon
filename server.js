@@ -180,7 +180,23 @@ const server = http.createServer(async (req, res) => {
       if (!hasSupabase) return json(res, 500, { error: "Supabase not configured" });
       const body = await parseBody(req);
       const current = await supabaseGetTeam(code);
-      const mergedState = { ...(current?.state || defaultState()), ...(body.state || {}) };
+      const currentState = current?.state || defaultState();
+      const incoming = body.state || {};
+      if (!incoming.lastUpdated) {
+        return json(res, 200, { ok: true, ignored: true });
+      }
+      const incomingTs = new Date(incoming.lastUpdated);
+      const currentTs = currentState.lastUpdated ? new Date(currentState.lastUpdated) : null;
+      if (currentTs && incomingTs < currentTs) {
+        return json(res, 200, { ok: true, ignored: true });
+      }
+      const currentSessions = currentState.sessions || [];
+      const incomingSessions = incoming.sessions || [];
+      if (currentSessions.length && incomingSessions.length < currentSessions.length) {
+        return json(res, 200, { ok: true, ignored: true });
+      }
+      const mergedState = { ...currentState, ...incoming };
+      mergedState.lastUpdated = new Date().toISOString();
       await supabaseUpsertTeam(code, mergedState);
       return json(res, 200, { ok: true });
     }
