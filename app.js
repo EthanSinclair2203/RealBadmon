@@ -911,6 +911,8 @@ async function apiAction(action, data) {
     });
     if (!res.ok) {
       state.syncStatus = "error";
+      const text = await res.text().catch(() => "");
+      state.syncError = `${res.status} ${text}`.trim();
       return null;
     }
     const payload = await res.json().catch(() => null);
@@ -930,6 +932,7 @@ async function apiAction(action, data) {
   } catch {
     // ignore
     state.syncStatus = "error";
+    state.syncError = "network error";
     return null;
   }
 }
@@ -937,11 +940,17 @@ async function apiAction(action, data) {
 async function syncFromServer() {
   try {
     const res = await fetch(`${state.baseUrl}/teams/${TEAM_CODE}/state`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      state.syncStatus = "error";
+      const text = await res.text().catch(() => "");
+      state.syncError = `${res.status} ${text}`.trim();
+      return;
+    }
     const data = await res.json();
     applyServerState(data.state || {});
     state.lastServerSessions = data.state?.sessions ? data.state.sessions.length : 0;
     state.syncStatus = "ok";
+    state.syncError = "";
     const active = document.activeElement;
     const captainPanel = $("#tab-captain");
     const sessionsPanel = $("#tab-sessions");
