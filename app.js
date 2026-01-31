@@ -287,7 +287,7 @@ function renderSessionDetail() {
 
   detail.innerHTML = `
     <h3>${session.title}</h3>
-    <div class="muted">${formatTime(new Date(session.startTime))} • ${statusLabel(session)}</div>
+    <div class="muted">${formatTime(new Date(session.startTime))} - ${statusLabel(session)}</div>
     <div class="row" style="margin-top:10px;">
       <span class="badge">${isRevealed(session) ? "Reveal unlocked" : `Reveal in ${minutes}m ${seconds}s`}</span>
       <span class="badge">${session.formation}</span>
@@ -414,7 +414,7 @@ function renderLineup() {
 
   panel.innerHTML = `
     <div class="card">
-      <h3>${session.title} — Final XI</h3>
+      <h3>${session.title} - Final XI</h3>
       <div class="muted">Locked at ${formatClock(revealAt(session))}</div>
       <div class="grid" style="margin-top:12px;">
         ${rows}
