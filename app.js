@@ -22,7 +22,7 @@ const Formation = {
   },
 };
 
-const defaultPlayers = ["Ethan", "Mason", "Rafa", "Ezra", "Kai", "Jules", "Santi", "Noah", "Ari", "Diego"];
+const defaultPlayers = [];
 
 const state = loadState() ?? seedState();
 state.deviceId = deviceId;
@@ -47,55 +47,15 @@ const captainDraft = {
 
 function seedState() {
   const now = new Date();
-  const sessions = [
-    {
-      id: crypto.randomUUID(),
-      title: "Friday Night XI",
-      startTime: addHours(now, 3),
-      notes: "Show up early for warmup. We’re testing a new formation.",
-      formation: Formation.fourOneTwoOneTwoWide.id,
-      revealOffsetMinutes: 10,
-      rsvpByPlayer: makeInitialRSVP(defaultPlayers),
-      votesByPlayer: {},
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Sunday League",
-      startTime: addDays(now, 1),
-      notes: "Bring your A game.",
-      formation: Formation.threeTwoThreeTwo.id,
-      revealOffsetMinutes: 10,
-      rsvpByPlayer: makeInitialRSVP(defaultPlayers),
-      votesByPlayer: {},
-    },
-  ];
+  const sessions = [];
 
   return {
     sessions,
-    announcements: [
-      { id: crypto.randomUUID(), title: "Lineup reveal in 30", message: "Keep your phones close. Reveal hits at 8:20.", createdAt: new Date() },
-      { id: crypto.randomUUID(), title: "Formation test", message: "We’re trying 4-1-2-1-2 wide today. Vote honestly.", createdAt: new Date() },
-      { id: crypto.randomUUID(), title: "Reminder", message: "Warmup 15 mins early.", createdAt: new Date() },
-    ],
-    feedbackItems: [
-      {
-        id: crypto.randomUUID(),
-        title: "Friday Night XI Feedback",
-        videoURL: "https://youtube.com/watch?v=example",
-        notes: [
-          { id: crypto.randomUUID(), time: "02:12", note: "Press was late — gaps opened in midfield." },
-          { id: crypto.randomUUID(), time: "05:40", note: "Great switch to the right, keep it wide." },
-          { id: crypto.randomUUID(), time: "11:03", note: "Need a tighter line when we lose possession." },
-        ],
-        expiresAt: addHours(now, 14),
-      },
-    ],
-    chatMessages: [
-      { id: crypto.randomUUID(), sender: "Coach", text: "Welcome to Reeeal Badmon chat.", createdAt: new Date() },
-      { id: crypto.randomUUID(), sender: "Ethan", text: "Let’s go.", createdAt: new Date() },
-    ],
-    currentUserName: "Ethan",
-    selectedSessionId: sessions[0].id,
+    announcements: [],
+    feedbackItems: [],
+    chatMessages: [],
+    currentUserName: "",
+    selectedSessionId: "",
     adminPIN: "4242",
     captainUnlocked: false,
     teamCode: TEAM_CODE,
