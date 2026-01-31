@@ -75,9 +75,12 @@ async function supabaseUpsertTeam(code, state) {
     },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const text = await res.text();
+    return { error: text || "Supabase upsert failed" };
+  }
   const data = await res.json();
-  return data[0] || null;
+  return { data: data[0] || null };
 }
 
 function applyAction(current, action, data) {
@@ -160,7 +163,8 @@ const server = http.createServer(async (req, res) => {
         existing = await supabaseGetTeam(code);
       }
       const created = await supabaseUpsertTeam(code, defaultState());
-      return json(res, 200, { teamCode: code, state: created?.state || defaultState() });
+      if (created?.error) return json(res, 500, { error: created.error });
+      return json(res, 200, { teamCode: code, state: created?.data?.state || defaultState() });
     }
     return json(res, 500, { error: "Supabase not configured" });
   }
@@ -171,7 +175,9 @@ const server = http.createServer(async (req, res) => {
       if (!hasSupabase) return json(res, 500, { error: "Supabase not configured" });
       let team = await supabaseGetTeam(code);
       if (!team) {
-        team = await supabaseUpsertTeam(code, defaultState());
+        const created = await supabaseUpsertTeam(code, defaultState());
+        if (created?.error) return json(res, 500, { error: created.error });
+        team = created?.data;
       }
       return json(res, 200, { teamCode: code, state: team?.state || defaultState() });
     }
@@ -197,7 +203,8 @@ const server = http.createServer(async (req, res) => {
       }
       const mergedState = { ...currentState, ...incoming };
       mergedState.lastUpdated = new Date().toISOString();
-      await supabaseUpsertTeam(code, mergedState);
+      const updated = await supabaseUpsertTeam(code, mergedState);
+      if (updated?.error) return json(res, 500, { error: updated.error });
       return json(res, 200, { ok: true });
     }
 
@@ -209,7 +216,8 @@ const server = http.createServer(async (req, res) => {
       const nextState = applyAction(baseState, body.action, body.data || {});
       nextState.lastUpdated = new Date().toISOString();
       const updated = await supabaseUpsertTeam(code, nextState);
-      return json(res, 200, { teamCode: code, state: updated?.state || nextState });
+      if (updated?.error) return json(res, 500, { error: updated.error });
+      return json(res, 200, { teamCode: code, state: updated?.data?.state || nextState });
     }
   }
 
