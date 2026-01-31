@@ -44,6 +44,11 @@ const captainDraft = {
   editNotes: "",
   editFormation: Formation.fourOneTwoOneTwoWide.id,
   editRevealOffsetMinutes: 10,
+  feedbackTitle: "",
+  feedbackYouTube: "",
+  feedbackDrive: "",
+  feedbackTime: "",
+  feedbackNote: "",
 };
 
 function seedState() {
@@ -512,7 +517,8 @@ function renderFeedback() {
       ${active ? `
         <div class="card" style="margin-top:12px;">
           <strong>${active.title}</strong>
-          <div class="muted" style="margin-top:6px;">${active.videoURL}</div>
+          ${active.videoURL ? `<div class="muted" style="margin-top:6px;">YouTube: ${active.videoURL}</div>` : ""}
+          ${active.driveURL ? `<div class="muted" style="margin-top:6px;">Drive: ${active.driveURL}</div>` : ""}
           <div style="margin-top:10px;"><strong>Key moments</strong></div>
           ${active.notes.map((n) => `<div class="row"><span class="muted">${n.time}</span><span>${n.note}</span></div>`).join("")}
         </div>
@@ -590,6 +596,20 @@ function renderCaptain() {
           <input id="ann-title" class="input" placeholder="Title" />
           <textarea id="ann-body" class="input" placeholder="Message"></textarea>
           <button id="send-ann" class="btn">Send</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Post feedback</h3>
+        <div class="grid">
+          <input id="fb-title" class="input" placeholder="Title" value="${escapeHtml(captainDraft.feedbackTitle)}" />
+          <input id="fb-youtube" class="input" placeholder="YouTube link (optional)" value="${escapeHtml(captainDraft.feedbackYouTube)}" />
+          <input id="fb-drive" class="input" placeholder="Google Drive link (optional)" value="${escapeHtml(captainDraft.feedbackDrive)}" />
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 8px;">
+            <input id="fb-time" class="input" placeholder="Timestamp (e.g. 02:12)" value="${escapeHtml(captainDraft.feedbackTime)}" />
+            <input id="fb-note" class="input" placeholder="Note" value="${escapeHtml(captainDraft.feedbackNote)}" />
+          </div>
+          <button id="post-feedback" class="btn">Post Feedback</button>
         </div>
       </div>
 
@@ -676,6 +696,30 @@ function renderCaptain() {
     $("#ann-body").value = "";
     saveState();
     renderFeedChat();
+  });
+
+  $("#post-feedback").addEventListener("click", () => {
+    const title = $("#fb-title").value.trim() || "Session Feedback";
+    const youTube = $("#fb-youtube").value.trim();
+    const drive = $("#fb-drive").value.trim();
+    const time = $("#fb-time").value.trim();
+    const note = $("#fb-note").value.trim();
+    const notes = time && note ? [{ id: crypto.randomUUID(), time, note }] : [];
+    state.feedbackItems.unshift({
+      id: crypto.randomUUID(),
+      title,
+      videoURL: youTube,
+      driveURL: drive,
+      notes,
+      expiresAt: addHours(new Date(), 24),
+    });
+    captainDraft.feedbackTitle = "";
+    captainDraft.feedbackYouTube = "";
+    captainDraft.feedbackDrive = "";
+    captainDraft.feedbackTime = "";
+    captainDraft.feedbackNote = "";
+    saveState();
+    render();
   });
 
   $("#set-coach").addEventListener("click", () => {
@@ -845,6 +889,18 @@ function wireCaptainDraftInputs() {
   if (editNotes) editNotes.addEventListener("input", set("editNotes"));
   if (editFormation) editFormation.addEventListener("change", set("editFormation"));
   if (editReveal) editReveal.addEventListener("input", set("editRevealOffsetMinutes"));
+
+  const fbTitle = $("#fb-title");
+  const fbYouTube = $("#fb-youtube");
+  const fbDrive = $("#fb-drive");
+  const fbTime = $("#fb-time");
+  const fbNote = $("#fb-note");
+
+  if (fbTitle) fbTitle.addEventListener("input", set("feedbackTitle"));
+  if (fbYouTube) fbYouTube.addEventListener("input", set("feedbackYouTube"));
+  if (fbDrive) fbDrive.addEventListener("input", set("feedbackDrive"));
+  if (fbTime) fbTime.addEventListener("input", set("feedbackTime"));
+  if (fbNote) fbNote.addEventListener("input", set("feedbackNote"));
 }
 
 function setupGates() {
