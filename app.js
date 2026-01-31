@@ -198,6 +198,15 @@ function render() {
 
 function renderSessions() {
   const container = $("#tab-sessions");
+  const now = new Date();
+  const upcoming = state.sessions.filter((s) => new Date(s.startTime) >= now);
+  if (upcoming.length !== state.sessions.length) {
+    state.sessions = upcoming;
+    if (state.selectedSessionId && !state.sessions.find((s) => s.id === state.selectedSessionId)) {
+      state.selectedSessionId = state.sessions[0]?.id || "";
+    }
+    saveState();
+  }
   const sessions = state.sessions;
   const isMobile = window.innerWidth <= 600;
   const emptyMessage = '<div class="muted">No sessions yet. Captain can create one.</div>';
