@@ -200,6 +200,7 @@ function renderSessions() {
   const container = $("#tab-sessions");
   const sessions = state.sessions;
   const isMobile = window.innerWidth <= 600;
+  const emptyMessage = '<div class="muted">No sessions yet. Captain can create one.</div>';
 
   const list = sessions.map((s) => {
     const counts = rsvpCounts(s);
@@ -228,7 +229,7 @@ function renderSessions() {
           ${showingDetail ? `<button id="back-to-list" class="btn">Back</button>` : ""}
         </div>
         <div class="grid">
-          ${showingDetail ? `<div id="session-detail"></div>` : (list || "<div class=\\"muted\\">No sessions yet. Captain can create one.</div>")}
+          ${showingDetail ? `<div id="session-detail"></div>` : (list || emptyMessage)}
         </div>
       </div>
     `;
@@ -238,7 +239,7 @@ function renderSessions() {
         <div class="card">
           <h3>Upcoming sessions</h3>
           <div class="grid">
-            ${list || "<div class=\\"muted\\">No sessions yet. Captain can create one.</div>"}
+            ${list || emptyMessage}
           </div>
         </div>
         <div class="card" id="session-detail"></div>
