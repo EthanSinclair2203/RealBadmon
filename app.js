@@ -546,17 +546,15 @@ function renderFeedback() {
   const driveEmbed = active?.driveURL ? toDriveEmbed(active.driveURL) : "";
   panel.innerHTML = `
     <div class="card">
-      <h3>Video Feedback</h3>
+      <h3>Feedback</h3>
       <div class="muted">${active ? `Expires at ${formatClock(new Date(active.expiresAt))}` : "No active feedback"}</div>
       ${active ? `
         <div class="card" style="margin-top:12px;">
           <strong>${active.title}</strong>
-          ${active.videoURL ? `<div class="muted" style="margin-top:6px;">YouTube: ${active.videoURL}</div>` : ""}
-          ${active.driveURL ? `<div class="muted" style="margin-top:6px;">Drive: ${active.driveURL}</div>` : ""}
+          ${active.videoURL ? `<div class="muted" style="margin-top:6px;">YouTube: <a href="${active.videoURL}" target="_blank" rel="noopener">${active.videoURL}</a></div>` : ""}
+          ${active.driveURL ? `<div class="muted" style="margin-top:6px;">Drive: <a href="${active.driveURL}" target="_blank" rel="noopener">${active.driveURL}</a></div>` : ""}
           ${youTubeEmbed ? `<div class="video-frame"><iframe src="${youTubeEmbed}" title="YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : ""}
           ${driveEmbed ? `<div class="video-frame"><iframe src="${driveEmbed}" title="Drive video" allow="autoplay"></iframe></div>` : ""}
-          ${active.videoURL ? `<a class="btn" href="${active.videoURL}" target="_blank" rel="noopener">Open in YouTube</a>` : ""}
-          ${active.driveURL ? `<a class="btn" href="${active.driveURL}" target="_blank" rel="noopener">Open in Drive</a>` : ""}
           <div style="margin-top:10px;"><strong>Key moments</strong></div>
           ${active.notes.map((n) => `<div class="row"><span class="muted">${n.time}</span><span>${n.note}</span></div>`).join("")}
         </div>
