@@ -555,6 +555,8 @@ function renderFeedback() {
           ${active.driveURL ? `<div class="muted" style="margin-top:6px;">Drive: ${active.driveURL}</div>` : ""}
           ${youTubeEmbed ? `<div class="video-frame"><iframe src="${youTubeEmbed}" title="YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : ""}
           ${driveEmbed ? `<div class="video-frame"><iframe src="${driveEmbed}" title="Drive video" allow="autoplay"></iframe></div>` : ""}
+          ${active.videoURL ? `<a class="btn" href="${active.videoURL}" target="_blank" rel="noopener">Open in YouTube</a>` : ""}
+          ${active.driveURL ? `<a class="btn" href="${active.driveURL}" target="_blank" rel="noopener">Open in Drive</a>` : ""}
           <div style="margin-top:10px;"><strong>Key moments</strong></div>
           ${active.notes.map((n) => `<div class="row"><span class="muted">${n.time}</span><span>${n.note}</span></div>`).join("")}
         </div>
