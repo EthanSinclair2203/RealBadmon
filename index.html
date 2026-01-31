@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0c0f" />
+  <title>Reeeal Badmon</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.json" />
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">RB</div>
+        <div>
+          <div class="title">Reeeal Badmon</div>
+          <div class="subtitle">ProClubs Lineup</div>
+        </div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <button id="team-button" class="btn">Team</button>
+        <div class="user-pill" id="current-user"></div>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="sessions">Sessions</button>
+      <button class="tab" data-tab="lineup">Lineup</button>
+      <button class="tab" data-tab="feed">Feed + Chat</button>
+      <button class="tab" data-tab="feedback">Feedback</button>
+      <button class="tab" data-tab="captain">Captain</button>
+    </nav>
+
+    <main class="content">
+      <section id="tab-sessions" class="tab-panel active"></section>
+      <section id="tab-lineup" class="tab-panel"></section>
+      <section id="tab-feed" class="tab-panel"></section>
+      <section id="tab-feedback" class="tab-panel"></section>
+      <section id="tab-captain" class="tab-panel"></section>
+    </main>
+  </div>
+
+  <div id="name-gate" class="modal hidden">
+    <div class="modal-card">
+      <h2>Welcome</h2>
+      <p>Set your display name</p>
+      <input id="name-input" type="text" placeholder="Display name" />
+      <button id="name-save" class="btn primary">Continue</button>
+    </div>
+  </div>
+
+  <div id="pin-gate" class="modal hidden">
+    <div class="modal-card">
+      <h2>Captain</h2>
+      <p>Enter admin PIN</p>
+      <input id="pin-input" type="password" placeholder="PIN" />
+      <div id="pin-error" class="error"></div>
+      <button id="pin-unlock" class="btn primary">Unlock</button>
+    </div>
+  </div>
+
+  <div id="team-gate" class="modal hidden">
+    <div class="modal-card">
+      <h2>Team Setup</h2>
+      <p>Join or create a team</p>
+      <input id="base-url" type="text" placeholder="Base URL (default: http://localhost:8787)" />
+      <input id="team-code" type="text" placeholder="Team code (leave blank to create)" />
+      <div id="team-error" class="error"></div>
+      <button id="team-join" class="btn">Join Team</button>
+      <button id="team-create" class="btn primary">Create Team</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
