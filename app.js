@@ -671,13 +671,15 @@ function handleGates() {
   const nameGate = $("#name-gate");
   const pinGate = $("#pin-gate");
 
-  if (!state.currentUserName) {
-    nameGate.classList.remove("hidden");
-  } else {
-    nameGate.classList.add("hidden");
+  if (nameGate) {
+    if (!state.currentUserName) {
+      nameGate.classList.remove("hidden");
+    } else {
+      nameGate.classList.add("hidden");
+    }
   }
 
-  if (state.captainUnlocked) {
+  if (pinGate && state.captainUnlocked) {
     pinGate.classList.add("hidden");
   }
 }
@@ -744,26 +746,32 @@ function showPinGate() {
 }
 
 function setupGates() {
-  $("#name-save").addEventListener("click", () => {
-    const name = $("#name-input").value.trim();
-    if (!name) return;
-    state.currentUserName = name;
-    saveState();
-    render();
-  });
-
-  $("#pin-unlock").addEventListener("click", () => {
-    const pin = $("#pin-input").value.trim();
-    if (pin === state.adminPIN) {
-      state.captainUnlocked = true;
-      $("#pin-error").textContent = "";
-      $("#pin-gate").classList.add("hidden");
+  const nameSave = $("#name-save");
+  if (nameSave) {
+    nameSave.addEventListener("click", () => {
+      const name = $("#name-input").value.trim();
+      if (!name) return;
+      state.currentUserName = name;
       saveState();
       render();
-    } else {
-      $("#pin-error").textContent = "Incorrect PIN";
-    }
-  });
+    });
+  }
+
+  const pinUnlock = $("#pin-unlock");
+  if (pinUnlock) {
+    pinUnlock.addEventListener("click", () => {
+      const pin = $("#pin-input").value.trim();
+      if (pin === state.adminPIN) {
+        state.captainUnlocked = true;
+        $("#pin-error").textContent = "";
+        $("#pin-gate").classList.add("hidden");
+        saveState();
+        render();
+      } else {
+        $("#pin-error").textContent = "Incorrect PIN";
+      }
+    });
+  }
 
 }
 
