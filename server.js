@@ -98,6 +98,13 @@ function applyAction(current, action, data) {
       state.sessions = (state.sessions || []).map((s) => (s.id === data.session.id ? data.session : s));
       return state;
     }
+    case "deleteSession": {
+      state.sessions = (state.sessions || []).filter((s) => s.id !== data.sessionId);
+      if (state.selectedSessionId === data.sessionId) {
+        state.selectedSessionId = state.sessions[0]?.id || "";
+      }
+      return state;
+    }
     case "addAnnouncement": {
       state.announcements = [data.announcement, ...(state.announcements || [])];
       return state;

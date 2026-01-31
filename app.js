@@ -656,7 +656,10 @@ function renderCaptain() {
             ${Object.values(Formation).map((f) => `<option value="${f.id}" ${f.id === captainDraft.editFormation ? "selected" : ""}>${f.id}</option>`).join("")}
           </select>
           <input id="edit-reveal" class="input" type="number" min="5" max="30" step="5" value="${captainDraft.editRevealOffsetMinutes}" />
-          <button id="update-session" class="btn">Update Session</button>
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 8px;">
+            <button id="update-session" class="btn">Update Session</button>
+            <button id="delete-session" class="btn danger">Delete Session</button>
+          </div>
         </div>
       </div>
 
@@ -757,6 +760,23 @@ function renderCaptain() {
     await apiAction("updateSession", { session });
     render();
   });
+
+  const deleteBtn = $("#delete-session");
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", async () => {
+      const id = $("#edit-id").value;
+      if (!id) return;
+      await apiAction("deleteSession", { sessionId: id });
+      captainDraft.editId = "";
+      captainDraft.editTitle = "";
+      captainDraft.editDate = "";
+      captainDraft.editTime = "";
+      captainDraft.editNotes = "";
+      captainDraft.editFormation = Formation.fourOneTwoOneTwoWide.id;
+      captainDraft.editRevealOffsetMinutes = 10;
+      render();
+    });
+  }
 
   $("#send-ann").addEventListener("click", async () => {
     const title = $("#ann-title").value.trim();
