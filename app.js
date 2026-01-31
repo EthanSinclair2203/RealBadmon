@@ -201,6 +201,10 @@ function renderSessions() {
   const sessions = state.sessions;
   const isMobile = window.innerWidth <= 600;
   const emptyMessage = '<div class="muted">No sessions yet. Captain can create one.</div>';
+  const activeEl = document.activeElement;
+  if (activeEl && ["INPUT", "SELECT", "TEXTAREA"].includes(activeEl.tagName)) {
+    return;
+  }
 
   const list = sessions.map((s) => {
     const counts = rsvpCounts(s);
@@ -347,7 +351,7 @@ function voteHelpText(session, current) {
 function renderVoting(session) {
   const detail = $("#session-detail");
   const eligible = eligiblePlayers(session);
-  const positions = getFormationPositions(session.formation);
+  const positions = getFormationPositions(session.formation).slice().reverse();
   const canVote = !isRevealed(session) && (session.rsvpByPlayer[state.currentUserName] === "In");
 
   const menu = positions.map((pos) => {
@@ -409,7 +413,7 @@ function renderLineup() {
   }
 
   const lineup = lineupFor(session);
-  const rows = getFormationPositions(session.formation)
+  const rows = getFormationPositions(session.formation).slice().reverse()
     .map((pos) => `<div class="row"><strong>${pos}</strong><span>${lineup[pos] || "TBD"}</span></div>`)
     .join("");
 
@@ -767,8 +771,10 @@ async function syncFromServer() {
     applyServerState(data.state || {});
     const active = document.activeElement;
     const captainPanel = $("#tab-captain");
+    const sessionsPanel = $("#tab-sessions");
     const isEditingCaptain = captainPanel && active && captainPanel.contains(active);
-    if (!isEditingCaptain) {
+    const isEditingSessions = sessionsPanel && active && sessionsPanel.contains(active);
+    if (!isEditingCaptain && !isEditingSessions) {
       render();
     }
   } catch {
