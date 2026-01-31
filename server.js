@@ -41,6 +41,7 @@ function defaultState() {
     chatMessages: [],
     selectedSessionId: "",
     adminPIN: "4242",
+    lastUpdated: new Date().toISOString(),
   };
 }
 

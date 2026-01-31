@@ -833,6 +833,15 @@ function handleGates() {
 }
 
 function applyServerState(serverState) {
+  const localHasSessions = state.sessions && state.sessions.length > 0;
+  if (!serverState.lastUpdated && localHasSessions && (!serverState.sessions || serverState.sessions.length === 0)) {
+    return;
+  }
+  if (serverState.lastUpdated && state.lastUpdated) {
+    const incoming = new Date(serverState.lastUpdated);
+    const local = new Date(state.lastUpdated);
+    if (incoming < local) return;
+  }
   state.sessions = (serverState.sessions || []).map((s) => ({
     ...s,
     startTime: new Date(s.startTime),
@@ -860,7 +869,7 @@ function applyServerState(serverState) {
     state.selectedSessionId = state.sessions[0]?.id || "";
   }
   state.adminPIN = serverState.adminPIN || state.adminPIN;
-  state.lastUpdated = serverState.lastUpdated || new Date().toISOString();
+  state.lastUpdated = serverState.lastUpdated || state.lastUpdated || new Date().toISOString();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
