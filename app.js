@@ -29,6 +29,7 @@ const state = loadState() ?? seedState();
 applyLocalSettings();
 state.syncStatus = state.syncStatus || "idle";
 state.syncError = state.syncError || "";
+state.lastServerSessions = state.lastServerSessions || 0;
 state.deviceId = deviceId;
 state.baseUrl = baseUrl;
 state.teamCode = TEAM_CODE;
@@ -250,7 +251,9 @@ function render() {
   $("#current-user").textContent = `You: ${state.currentUserName || ""}`;
   const statusEl = $("#sync-status");
   if (statusEl) {
-    statusEl.textContent = state.syncStatus === "error" ? `Sync error` : "Sync ok";
+    const localCount = state.sessions ? state.sessions.length : 0;
+    const serverCount = state.lastServerSessions ?? 0;
+    statusEl.textContent = state.syncStatus === "error" ? `Sync error` : `Sync ok (${localCount}/${serverCount})`;
     statusEl.className = `user-pill ${state.syncStatus === "error" ? "pill-error" : "pill-ok"}`;
   }
   renderSessions();
@@ -921,6 +924,10 @@ async function apiAction(action, data) {
     const payload = await res.json();
     if (payload?.state) {
       applyServerState(payload.state);
+      state.lastServerSessions = payload.state.sessions ? payload.state.sessions.length : 0;
+      if ((payload.state.sessions || []).length === 0 && (state.sessions || []).length > 0) {
+        await forceSyncState();
+      }
       state.syncStatus = "ok";
       return payload.state;
     }
@@ -967,6 +974,7 @@ async function syncFromServer() {
     if (!res.ok) return;
     const data = await res.json();
     applyServerState(data.state || {});
+    state.lastServerSessions = data.state?.sessions ? data.state.sessions.length : 0;
     const active = document.activeElement;
     const captainPanel = $("#tab-captain");
     const sessionsPanel = $("#tab-sessions");
