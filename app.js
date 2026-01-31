@@ -2,6 +2,7 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
 const STORAGE_KEY = "reeealbadmon.state.v1";
+const LOCAL_KEY = "reeealbadmon.local.v1";
 const BASE_URL_KEY = "reeealbadmon.baseurl";
 const DEVICE_ID_KEY = "reeealbadmon.deviceid";
 const TEAM_CODE = "REALBADMON";
@@ -25,6 +26,7 @@ const Formation = {
 const defaultPlayers = [];
 
 const state = loadState() ?? seedState();
+applyLocalSettings();
 state.deviceId = deviceId;
 state.baseUrl = baseUrl;
 state.teamCode = TEAM_CODE;
@@ -88,10 +90,26 @@ function loadState() {
   }
 }
 
-function saveState() {
-  state.lastUpdated = new Date().toISOString();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  syncToServer();
+function applyLocalSettings() {
+  const raw = localStorage.getItem(LOCAL_KEY);
+  if (!raw) return;
+  try {
+    const local = JSON.parse(raw);
+    if (typeof local.currentUserName === "string") state.currentUserName = local.currentUserName;
+    if (typeof local.captainUnlocked === "boolean") state.captainUnlocked = local.captainUnlocked;
+    if (typeof local.sessionsView === "string") state.sessionsView = local.sessionsView;
+  } catch {
+    // ignore
+  }
+}
+
+function saveLocalSettings() {
+  const payload = {
+    currentUserName: state.currentUserName || "",
+    captainUnlocked: state.captainUnlocked || false,
+    sessionsView: state.sessionsView || "list",
+  };
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(payload));
 }
 
 function addHours(date, hours) {
@@ -295,7 +313,7 @@ function renderSessions() {
     card.addEventListener("click", () => {
       state.selectedSessionId = card.dataset.session;
       state.sessionsView = isMobile ? "detail" : state.sessionsView;
-      saveState();
+      saveLocalSettings();
       render();
     });
   });
@@ -305,7 +323,7 @@ function renderSessions() {
     if (back) {
       back.addEventListener("click", () => {
         state.sessionsView = "list";
-        saveState();
+        saveLocalSettings();
         render();
       });
     }
@@ -371,7 +389,11 @@ function renderSessionDetail() {
     if (btn.dataset.status === current) btn.classList.add("selected");
     btn.addEventListener("click", () => {
       session.rsvpByPlayer[state.currentUserName] = btn.dataset.status;
-      saveState();
+      apiAction("updateRSVP", {
+        sessionId: session.id,
+        player: state.currentUserName,
+        status: btn.dataset.status,
+      });
       render();
     });
   });
@@ -428,7 +450,12 @@ function renderVoting(session) {
       session.votesByPlayer[state.currentUserName] ||= {};
       if (candidate) session.votesByPlayer[state.currentUserName][pos] = candidate;
       else delete session.votesByPlayer[state.currentUserName][pos];
-      saveState();
+      apiAction("vote", {
+        sessionId: session.id,
+        player: state.currentUserName,
+        position: pos,
+        candidate: candidate || "",
+      });
     });
   });
 }
@@ -514,9 +541,10 @@ function renderFeedChat() {
       const input = $("#chat-input");
       const text = input.value.trim();
       if (!text) return;
-      state.chatMessages.push({ id: crypto.randomUUID(), sender: state.currentUserName, text, createdAt: new Date() });
+      const message = { id: crypto.randomUUID(), sender: state.currentUserName, text, createdAt: new Date() };
+      state.chatMessages.push(message);
       input.value = "";
-      saveState();
+      apiAction("addChat", { message });
       renderFeedChat();
     });
   };
@@ -672,7 +700,7 @@ function renderCaptain() {
 
     const rsvpByPlayer = makeInitialRSVP(Array.from(new Set([...defaultPlayers, state.currentUserName])));
 
-    state.sessions.unshift({
+    const session = {
       id: crypto.randomUUID(),
       title,
       startTime: start,
@@ -681,9 +709,10 @@ function renderCaptain() {
       revealOffsetMinutes,
       rsvpByPlayer,
       votesByPlayer: {},
-    });
-    state.selectedSessionId = state.sessions[0].id;
-    saveState();
+    };
+    state.sessions.unshift(session);
+    state.selectedSessionId = session.id;
+    apiAction("createSession", { session });
     captainDraft.title = "";
     captainDraft.notes = "";
     render();
@@ -713,7 +742,7 @@ function renderCaptain() {
     session.notes = $("#edit-notes").value.trim();
     session.formation = $("#edit-formation").value;
     session.revealOffsetMinutes = Number($("#edit-reveal").value || session.revealOffsetMinutes);
-    saveState();
+    apiAction("updateSession", { session });
     render();
   });
 
@@ -721,10 +750,11 @@ function renderCaptain() {
     const title = $("#ann-title").value.trim();
     const message = $("#ann-body").value.trim();
     if (!title || !message) return;
-    state.announcements.unshift({ id: crypto.randomUUID(), title, message, createdAt: new Date() });
+    const announcement = { id: crypto.randomUUID(), title, message, createdAt: new Date() };
+    state.announcements.unshift(announcement);
     $("#ann-title").value = "";
     $("#ann-body").value = "";
-    saveState();
+    apiAction("addAnnouncement", { announcement });
     renderFeedChat();
   });
 
@@ -735,27 +765,28 @@ function renderCaptain() {
     const time = $("#fb-time").value.trim();
     const note = $("#fb-note").value.trim();
     const notes = time && note ? [{ id: crypto.randomUUID(), time, note }] : [];
-    state.feedbackItems.unshift({
+    const feedback = {
       id: crypto.randomUUID(),
       title,
       videoURL: youTube,
       driveURL: drive,
       notes,
       expiresAt: addHours(new Date(), 24),
-    });
+    };
+    state.feedbackItems.unshift(feedback);
     captainDraft.feedbackTitle = "";
     captainDraft.feedbackYouTube = "";
     captainDraft.feedbackDrive = "";
     captainDraft.feedbackTime = "";
     captainDraft.feedbackNote = "";
-    saveState();
+    apiAction("addFeedback", { feedback });
     render();
   });
 
   $("#set-coach").addEventListener("click", () => {
     const name = $("#coach-name").value.trim() || "Coach";
     state.currentUserName = name;
-    saveState();
+    saveLocalSettings();
     render();
   });
 
@@ -764,7 +795,7 @@ function renderCaptain() {
     if (!pin) return;
     state.adminPIN = pin;
     $("#new-pin").value = "";
-    saveState();
+    apiAction("updateAdminPIN", { adminPIN: pin });
   });
 
   wireCaptainDraftInputs();
@@ -802,59 +833,49 @@ function handleGates() {
 }
 
 function applyServerState(serverState) {
-  const serverUpdated = serverState.lastUpdated ? new Date(serverState.lastUpdated) : null;
-  const localUpdated = state.lastUpdated ? new Date(state.lastUpdated) : null;
-  if (serverUpdated && localUpdated && serverUpdated <= localUpdated) {
-    return;
-  }
-  const incomingSessions = (serverState.sessions || []).map((s) => ({
+  state.sessions = (serverState.sessions || []).map((s) => ({
     ...s,
     startTime: new Date(s.startTime),
   }));
-  const incomingAnnouncements = (serverState.announcements || []).map((a) => ({
+  state.announcements = (serverState.announcements || []).map((a) => ({
     ...a,
     createdAt: new Date(a.createdAt),
   }));
-  const incomingFeedback = (serverState.feedbackItems || []).map((f) => ({
+  state.feedbackItems = (serverState.feedbackItems || []).map((f) => ({
     ...f,
     expiresAt: new Date(f.expiresAt),
   }));
-  const incomingChat = (serverState.chatMessages || []).map((m) => ({
+  state.chatMessages = (serverState.chatMessages || []).map((m) => ({
     ...m,
     createdAt: new Date(m.createdAt),
   }));
-
-  state.sessions = incomingSessions.length ? incomingSessions : state.sessions;
-  state.announcements = incomingAnnouncements.length ? incomingAnnouncements : state.announcements;
-  state.feedbackItems = incomingFeedback.length ? incomingFeedback : state.feedbackItems;
-  state.chatMessages = incomingChat.length ? incomingChat : state.chatMessages;
-  state.selectedSessionId = serverState.selectedSessionId || state.sessions[0]?.id || "";
+  const localSelected = state.selectedSessionId;
+  const serverSelected = serverState.selectedSessionId;
+  const exists = (id) => state.sessions.find((s) => s.id === id);
+  if (localSelected && exists(localSelected)) {
+    state.selectedSessionId = localSelected;
+  } else if (serverSelected && exists(serverSelected)) {
+    state.selectedSessionId = serverSelected;
+  } else {
+    state.selectedSessionId = state.sessions[0]?.id || "";
+  }
   state.adminPIN = serverState.adminPIN || state.adminPIN;
-  state.lastUpdated = serverState.lastUpdated || state.lastUpdated;
+  state.lastUpdated = serverState.lastUpdated || new Date().toISOString();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-async function syncToServer() {
+async function apiAction(action, data) {
   try {
-    await fetch(`${state.baseUrl}/teams/${TEAM_CODE}/state`, {
-      method: "PUT",
+    const res = await fetch(`${state.baseUrl}/teams/${TEAM_CODE}/action`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        deviceId,
-        name: state.currentUserName || "Player",
-        state: {
-          sessions: state.sessions,
-          announcements: state.announcements,
-          feedbackItems: state.feedbackItems,
-          chatMessages: state.chatMessages,
-          selectedSessionId: state.selectedSessionId,
-          adminPIN: state.adminPIN,
-          lastUpdated: state.lastUpdated,
-        },
-      }),
+      body: JSON.stringify({ action, data }),
     });
+    if (!res.ok) return;
+    const payload = await res.json();
+    if (payload?.state) applyServerState(payload.state);
   } catch {
-    // silent offline fail
+    // ignore
   }
 }
 
@@ -952,7 +973,7 @@ function setupGates() {
       const name = $("#name-input").value.trim();
       if (!name) return;
       state.currentUserName = name;
-      saveState();
+      saveLocalSettings();
       render();
     });
   }
@@ -962,11 +983,11 @@ function setupGates() {
     pinUnlock.addEventListener("click", () => {
       const pin = $("#pin-input").value.trim();
       if (pin === state.adminPIN) {
-        state.captainUnlocked = true;
-        $("#pin-error").textContent = "";
-        $("#pin-gate").classList.add("hidden");
-        saveState();
-        render();
+      state.captainUnlocked = true;
+      $("#pin-error").textContent = "";
+      $("#pin-gate").classList.add("hidden");
+      saveLocalSettings();
+      render();
       } else {
         $("#pin-error").textContent = "Incorrect PIN";
       }
