@@ -212,9 +212,10 @@ function toDriveEmbed(url) {
   try {
     const u = new URL(url);
     if (!u.hostname.includes("drive.google.com")) return "";
-    const match = u.pathname.match(/\\/file\\/d\\/([^/]+)/);
-    if (match && match[1]) {
-      return `https://drive.google.com/file/d/${match[1]}/preview`;
+    const parts = u.pathname.split("/");
+    const fileIndex = parts.indexOf("d");
+    if (fileIndex !== -1 && parts[fileIndex + 1]) {
+      return `https://drive.google.com/file/d/${parts[fileIndex + 1]}/preview`;
     }
   } catch {
     return "";
