@@ -136,6 +136,10 @@ function applyAction(current, action, data) {
       state.adminPIN = data.adminPIN || state.adminPIN;
       return state;
     }
+    case "resetState": {
+      if (!data || data.adminPIN !== state.adminPIN) return null;
+      return defaultState();
+    }
     default:
       return null;
   }
@@ -194,6 +198,11 @@ const server = http.createServer(async (req, res) => {
       const baseState = current?.state || defaultState();
       const nextState = applyAction(baseState, body.action, body.data || {});
       if (!nextState) return json(res, 400, { error: "Unknown action" });
+      const baseSessions = baseState.sessions || [];
+      const nextSessions = nextState.sessions || [];
+      if (baseSessions.length && nextSessions.length < baseSessions.length && body.action !== "resetState") {
+        return json(res, 200, { teamCode: code, state: baseState, ignored: true });
+      }
       nextState.lastUpdated = new Date().toISOString();
       const updated = await supabaseUpsertTeam(code, nextState);
       if (updated?.error) return json(res, 500, { error: updated.error });
