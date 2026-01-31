@@ -191,6 +191,37 @@ function formatClock(date) {
   return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+function toYouTubeEmbed(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtu.be")) {
+      const id = u.pathname.replace("/", "");
+      return id ? `https://www.youtube.com/embed/${id}` : "";
+    }
+    if (u.hostname.includes("youtube.com")) {
+      const id = u.searchParams.get("v");
+      return id ? `https://www.youtube.com/embed/${id}` : "";
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+function toDriveEmbed(url) {
+  try {
+    const u = new URL(url);
+    if (!u.hostname.includes("drive.google.com")) return "";
+    const match = u.pathname.match(/\\/file\\/d\\/([^/]+)/);
+    if (match && match[1]) {
+      return `https://drive.google.com/file/d/${match[1]}/preview`;
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
 function render() {
   $("#current-user").textContent = `You: ${state.currentUserName || ""}`;
   renderSessions();
@@ -510,6 +541,8 @@ function renderFeedChat() {
 function renderFeedback() {
   const panel = $("#tab-feedback");
   const active = state.feedbackItems.find((f) => new Date(f.expiresAt) > new Date());
+  const youTubeEmbed = active?.videoURL ? toYouTubeEmbed(active.videoURL) : "";
+  const driveEmbed = active?.driveURL ? toDriveEmbed(active.driveURL) : "";
   panel.innerHTML = `
     <div class="card">
       <h3>Video Feedback</h3>
@@ -519,6 +552,8 @@ function renderFeedback() {
           <strong>${active.title}</strong>
           ${active.videoURL ? `<div class="muted" style="margin-top:6px;">YouTube: ${active.videoURL}</div>` : ""}
           ${active.driveURL ? `<div class="muted" style="margin-top:6px;">Drive: ${active.driveURL}</div>` : ""}
+          ${youTubeEmbed ? `<div class="video-frame"><iframe src="${youTubeEmbed}" title="YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : ""}
+          ${driveEmbed ? `<div class="video-frame"><iframe src="${driveEmbed}" title="Drive video" allow="autoplay"></iframe></div>` : ""}
           <div style="margin-top:10px;"><strong>Key moments</strong></div>
           ${active.notes.map((n) => `<div class="row"><span class="muted">${n.time}</span><span>${n.note}</span></div>`).join("")}
         </div>
