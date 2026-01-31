@@ -27,6 +27,8 @@ const defaultPlayers = [];
 
 const state = loadState() ?? seedState();
 applyLocalSettings();
+state.syncStatus = state.syncStatus || "idle";
+state.syncError = state.syncError || "";
 state.deviceId = deviceId;
 state.baseUrl = baseUrl;
 state.teamCode = TEAM_CODE;
@@ -246,6 +248,11 @@ function toDriveEmbed(url) {
 
 function render() {
   $("#current-user").textContent = `You: ${state.currentUserName || ""}`;
+  const statusEl = $("#sync-status");
+  if (statusEl) {
+    statusEl.textContent = state.syncStatus === "error" ? `Sync error` : "Sync ok";
+    statusEl.className = `user-pill ${state.syncStatus === "error" ? "pill-error" : "pill-ok"}`;
+  }
   renderSessions();
   renderLineup();
   renderFeedChat();
@@ -387,13 +394,14 @@ function renderSessionDetail() {
 
   $$(".rsvp").forEach((btn) => {
     if (btn.dataset.status === current) btn.classList.add("selected");
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       session.rsvpByPlayer[state.currentUserName] = btn.dataset.status;
-      apiAction("updateRSVP", {
+      const res = await apiAction("updateRSVP", {
         sessionId: session.id,
         player: state.currentUserName,
         status: btn.dataset.status,
       });
+      if (!res) await forceSyncState();
       render();
     });
   });
@@ -444,18 +452,19 @@ function renderVoting(session) {
   `);
 
   $$(".vote-select").forEach((select) => {
-    select.addEventListener("change", (e) => {
+    select.addEventListener("change", async (e) => {
       const pos = e.target.dataset.pos;
       const candidate = e.target.value;
       session.votesByPlayer[state.currentUserName] ||= {};
       if (candidate) session.votesByPlayer[state.currentUserName][pos] = candidate;
       else delete session.votesByPlayer[state.currentUserName][pos];
-      apiAction("vote", {
+      const res = await apiAction("vote", {
         sessionId: session.id,
         player: state.currentUserName,
         position: pos,
         candidate: candidate || "",
       });
+      if (!res) await forceSyncState();
     });
   });
 }
@@ -537,14 +546,15 @@ function renderFeedChat() {
         <button id="chat-send" class="btn primary">Send</button>
       </div>
     `;
-    $("#chat-send").addEventListener("click", () => {
+    $("#chat-send").addEventListener("click", async () => {
       const input = $("#chat-input");
       const text = input.value.trim();
       if (!text) return;
       const message = { id: crypto.randomUUID(), sender: state.currentUserName, text, createdAt: new Date() };
       state.chatMessages.push(message);
       input.value = "";
-      apiAction("addChat", { message });
+      const res = await apiAction("addChat", { message });
+      if (!res) await forceSyncState();
       renderFeedChat();
     });
   };
@@ -689,7 +699,7 @@ function renderCaptain() {
     </div>
   `;
 
-  $("#create-session").addEventListener("click", () => {
+  $("#create-session").addEventListener("click", async () => {
     const title = $("#new-title").value.trim() || "New Session";
     const date = $("#new-date").value;
     const time = $("#new-time").value;
@@ -712,7 +722,10 @@ function renderCaptain() {
     };
     state.sessions.unshift(session);
     state.selectedSessionId = session.id;
-    apiAction("createSession", { session });
+    const res = await apiAction("createSession", { session });
+    if (!res) {
+      await forceSyncState();
+    }
     captainDraft.title = "";
     captainDraft.notes = "";
     render();
@@ -732,7 +745,7 @@ function renderCaptain() {
     renderCaptain();
   });
 
-  $("#update-session").addEventListener("click", () => {
+  $("#update-session").addEventListener("click", async () => {
     const id = $("#edit-id").value;
     if (!id) return;
     const session = state.sessions.find((s) => s.id === id);
@@ -742,11 +755,12 @@ function renderCaptain() {
     session.notes = $("#edit-notes").value.trim();
     session.formation = $("#edit-formation").value;
     session.revealOffsetMinutes = Number($("#edit-reveal").value || session.revealOffsetMinutes);
-    apiAction("updateSession", { session });
+    const res = await apiAction("updateSession", { session });
+    if (!res) await forceSyncState();
     render();
   });
 
-  $("#send-ann").addEventListener("click", () => {
+  $("#send-ann").addEventListener("click", async () => {
     const title = $("#ann-title").value.trim();
     const message = $("#ann-body").value.trim();
     if (!title || !message) return;
@@ -754,11 +768,12 @@ function renderCaptain() {
     state.announcements.unshift(announcement);
     $("#ann-title").value = "";
     $("#ann-body").value = "";
-    apiAction("addAnnouncement", { announcement });
+    const res = await apiAction("addAnnouncement", { announcement });
+    if (!res) await forceSyncState();
     renderFeedChat();
   });
 
-  $("#post-feedback").addEventListener("click", () => {
+  $("#post-feedback").addEventListener("click", async () => {
     const title = $("#fb-title").value.trim() || "Session Feedback";
     const youTube = $("#fb-youtube").value.trim();
     const drive = $("#fb-drive").value.trim();
@@ -779,7 +794,8 @@ function renderCaptain() {
     captainDraft.feedbackDrive = "";
     captainDraft.feedbackTime = "";
     captainDraft.feedbackNote = "";
-    apiAction("addFeedback", { feedback });
+    const res = await apiAction("addFeedback", { feedback });
+    if (!res) await forceSyncState();
     render();
   });
 
@@ -790,12 +806,13 @@ function renderCaptain() {
     render();
   });
 
-  $("#update-pin").addEventListener("click", () => {
+  $("#update-pin").addEventListener("click", async () => {
     const pin = $("#new-pin").value.trim();
     if (!pin) return;
     state.adminPIN = pin;
     $("#new-pin").value = "";
-    apiAction("updateAdminPIN", { adminPIN: pin });
+    const res = await apiAction("updateAdminPIN", { adminPIN: pin });
+    if (!res) await forceSyncState();
   });
 
   wireCaptainDraftInputs();
@@ -891,17 +908,57 @@ function applyServerState(serverState) {
 
 async function apiAction(action, data) {
   try {
+    state.syncStatus = "syncing";
     const res = await fetch(`${state.baseUrl}/teams/${TEAM_CODE}/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, data }),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      state.syncStatus = "error";
+      return null;
+    }
     const payload = await res.json();
-    if (payload?.state) applyServerState(payload.state);
+    if (payload?.state) {
+      applyServerState(payload.state);
+      state.syncStatus = "ok";
+      return payload.state;
+    }
+    state.syncStatus = "error";
+    return null;
+  } catch {
+    // ignore
+    state.syncStatus = "error";
+    return null;
+  }
+}
+
+async function forceSyncState() {
+  try {
+    const res = await fetch(`${state.baseUrl}/teams/${TEAM_CODE}/state`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        state: {
+          sessions: state.sessions,
+          announcements: state.announcements,
+          feedbackItems: state.feedbackItems,
+          chatMessages: state.chatMessages,
+          selectedSessionId: state.selectedSessionId,
+          adminPIN: state.adminPIN,
+          lastUpdated: new Date().toISOString(),
+        },
+      }),
+    });
+    if (res.ok) {
+      state.syncStatus = "ok";
+      return true;
+    }
   } catch {
     // ignore
   }
+  state.syncStatus = "error";
+  return false;
 }
 
 async function syncFromServer() {

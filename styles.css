@@ -59,6 +59,16 @@ body {
   color: var(--muted);
 }
 
+.pill-ok {
+  color: #b7f5c8;
+  border-color: rgba(59,214,113,0.4);
+}
+
+.pill-error {
+  color: #ffb1b1;
+  border-color: rgba(255,92,108,0.4);
+}
+
 .tabs {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
