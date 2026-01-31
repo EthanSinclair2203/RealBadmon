@@ -236,15 +236,15 @@ function render() {
 function renderSessions() {
   const container = $("#tab-sessions");
   const now = new Date();
-  const upcoming = state.sessions.filter((s) => new Date(s.startTime) >= now);
-  if (upcoming.length !== state.sessions.length) {
-    state.sessions = upcoming;
-    if (state.selectedSessionId && !state.sessions.find((s) => s.id === state.selectedSessionId)) {
-      state.selectedSessionId = state.sessions[0]?.id || "";
-    }
+  const upcoming = state.sessions.filter((s) => {
+    const dt = new Date(s.startTime);
+    return Number.isNaN(dt.getTime()) ? true : dt >= now;
+  });
+  if (state.selectedSessionId && !upcoming.find((s) => s.id === state.selectedSessionId)) {
+    state.selectedSessionId = upcoming[0]?.id || "";
     saveState();
   }
-  const sessions = state.sessions;
+  const sessions = upcoming;
   const isMobile = window.innerWidth <= 600;
   const emptyMessage = '<div class="muted">No sessions yet. Captain can create one.</div>';
   const activeEl = document.activeElement;
