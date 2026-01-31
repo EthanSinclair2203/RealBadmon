@@ -46,7 +46,7 @@ function defaultState() {
 }
 
 async function supabaseGetTeam(code) {
-  const url = `${SUPABASE_URL}/rest/v1/team_state?team_code=eq.${encodeURIComponent(code)}&select=team_code,state,created_at,updated_at`;
+  const url = `${SUPABASE_URL}/rest/v1/team_state?team_code=eq.${encodeURIComponent(code)}&select=team_code,state,updated_at`;
   const res = await fetch(url, {
     headers: {
       apikey: SUPABASE_SERVICE_KEY,
