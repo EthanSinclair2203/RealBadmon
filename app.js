@@ -399,12 +399,11 @@ function renderSessionDetail() {
     if (btn.dataset.status === current) btn.classList.add("selected");
     btn.addEventListener("click", async () => {
       session.rsvpByPlayer[state.currentUserName] = btn.dataset.status;
-      const res = await apiAction("updateRSVP", {
+    await apiAction("updateRSVP", {
         sessionId: session.id,
         player: state.currentUserName,
         status: btn.dataset.status,
       });
-      if (!res) await forceSyncState();
       render();
     });
   });
@@ -461,13 +460,12 @@ function renderVoting(session) {
       session.votesByPlayer[state.currentUserName] ||= {};
       if (candidate) session.votesByPlayer[state.currentUserName][pos] = candidate;
       else delete session.votesByPlayer[state.currentUserName][pos];
-      const res = await apiAction("vote", {
+      await apiAction("vote", {
         sessionId: session.id,
         player: state.currentUserName,
         position: pos,
         candidate: candidate || "",
       });
-      if (!res) await forceSyncState();
     });
   });
 }
@@ -556,8 +554,7 @@ function renderFeedChat() {
       const message = { id: crypto.randomUUID(), sender: state.currentUserName, text, createdAt: new Date() };
       state.chatMessages.push(message);
       input.value = "";
-      const res = await apiAction("addChat", { message });
-      if (!res) await forceSyncState();
+      await apiAction("addChat", { message });
       renderFeedChat();
     });
   };
@@ -725,10 +722,7 @@ function renderCaptain() {
     };
     state.sessions.unshift(session);
     state.selectedSessionId = session.id;
-    const res = await apiAction("createSession", { session });
-    if (!res) {
-      await forceSyncState();
-    }
+    await apiAction("createSession", { session });
     captainDraft.title = "";
     captainDraft.notes = "";
     render();
@@ -758,8 +752,7 @@ function renderCaptain() {
     session.notes = $("#edit-notes").value.trim();
     session.formation = $("#edit-formation").value;
     session.revealOffsetMinutes = Number($("#edit-reveal").value || session.revealOffsetMinutes);
-    const res = await apiAction("updateSession", { session });
-    if (!res) await forceSyncState();
+    await apiAction("updateSession", { session });
     render();
   });
 
@@ -771,8 +764,7 @@ function renderCaptain() {
     state.announcements.unshift(announcement);
     $("#ann-title").value = "";
     $("#ann-body").value = "";
-    const res = await apiAction("addAnnouncement", { announcement });
-    if (!res) await forceSyncState();
+    await apiAction("addAnnouncement", { announcement });
     renderFeedChat();
   });
 
@@ -797,8 +789,7 @@ function renderCaptain() {
     captainDraft.feedbackDrive = "";
     captainDraft.feedbackTime = "";
     captainDraft.feedbackNote = "";
-    const res = await apiAction("addFeedback", { feedback });
-    if (!res) await forceSyncState();
+    await apiAction("addFeedback", { feedback });
     render();
   });
 
@@ -814,8 +805,7 @@ function renderCaptain() {
     if (!pin) return;
     state.adminPIN = pin;
     $("#new-pin").value = "";
-    const res = await apiAction("updateAdminPIN", { adminPIN: pin });
-    if (!res) await forceSyncState();
+    await apiAction("updateAdminPIN", { adminPIN: pin });
   });
 
   wireCaptainDraftInputs();
@@ -925,9 +915,6 @@ async function apiAction(action, data) {
     if (payload?.state) {
       applyServerState(payload.state);
       state.lastServerSessions = payload.state.sessions ? payload.state.sessions.length : 0;
-      if ((payload.state.sessions || []).length === 0 && (state.sessions || []).length > 0) {
-        await forceSyncState();
-      }
       state.syncStatus = "ok";
       return payload.state;
     }
@@ -940,34 +927,6 @@ async function apiAction(action, data) {
   }
 }
 
-async function forceSyncState() {
-  try {
-    const res = await fetch(`${state.baseUrl}/teams/${TEAM_CODE}/state`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        state: {
-          sessions: state.sessions,
-          announcements: state.announcements,
-          feedbackItems: state.feedbackItems,
-          chatMessages: state.chatMessages,
-          selectedSessionId: state.selectedSessionId,
-          adminPIN: state.adminPIN,
-          lastUpdated: new Date().toISOString(),
-        },
-      }),
-    });
-    if (res.ok) {
-      state.syncStatus = "ok";
-      return true;
-    }
-  } catch {
-    // ignore
-  }
-  state.syncStatus = "error";
-  return false;
-}
-
 async function syncFromServer() {
   try {
     const res = await fetch(`${state.baseUrl}/teams/${TEAM_CODE}/state`);
@@ -975,6 +934,7 @@ async function syncFromServer() {
     const data = await res.json();
     applyServerState(data.state || {});
     state.lastServerSessions = data.state?.sessions ? data.state.sessions.length : 0;
+    state.syncStatus = "ok";
     const active = document.activeElement;
     const captainPanel = $("#tab-captain");
     const sessionsPanel = $("#tab-sessions");
