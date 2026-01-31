@@ -28,6 +28,7 @@ const state = loadState() ?? seedState();
 state.deviceId = deviceId;
 state.baseUrl = baseUrl;
 state.teamCode = TEAM_CODE;
+state.lastUpdated = state.lastUpdated || new Date().toISOString();
 state.sessionsView = state.sessionsView || "list";
 
 const captainDraft = {
@@ -67,7 +68,8 @@ function seedState() {
     sessionsView: "list",
     teamCode: TEAM_CODE,
     deviceId,
-    baseUrl
+    baseUrl,
+    lastUpdated: now.toISOString()
   };
 }
 
@@ -87,6 +89,7 @@ function loadState() {
 }
 
 function saveState() {
+  state.lastUpdated = new Date().toISOString();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   syncToServer();
 }
@@ -799,25 +802,36 @@ function handleGates() {
 }
 
 function applyServerState(serverState) {
-  state.sessions = (serverState.sessions || []).map((s) => ({
+  const serverUpdated = serverState.lastUpdated ? new Date(serverState.lastUpdated) : null;
+  const localUpdated = state.lastUpdated ? new Date(state.lastUpdated) : null;
+  if (serverUpdated && localUpdated && serverUpdated <= localUpdated) {
+    return;
+  }
+  const incomingSessions = (serverState.sessions || []).map((s) => ({
     ...s,
     startTime: new Date(s.startTime),
   }));
-  state.announcements = (serverState.announcements || []).map((a) => ({
+  const incomingAnnouncements = (serverState.announcements || []).map((a) => ({
     ...a,
     createdAt: new Date(a.createdAt),
   }));
-  state.feedbackItems = (serverState.feedbackItems || []).map((f) => ({
+  const incomingFeedback = (serverState.feedbackItems || []).map((f) => ({
     ...f,
     expiresAt: new Date(f.expiresAt),
   }));
-  state.chatMessages = (serverState.chatMessages || []).map((m) => ({
+  const incomingChat = (serverState.chatMessages || []).map((m) => ({
     ...m,
     createdAt: new Date(m.createdAt),
   }));
+
+  state.sessions = incomingSessions.length ? incomingSessions : state.sessions;
+  state.announcements = incomingAnnouncements.length ? incomingAnnouncements : state.announcements;
+  state.feedbackItems = incomingFeedback.length ? incomingFeedback : state.feedbackItems;
+  state.chatMessages = incomingChat.length ? incomingChat : state.chatMessages;
   state.selectedSessionId = serverState.selectedSessionId || state.sessions[0]?.id || "";
   state.adminPIN = serverState.adminPIN || state.adminPIN;
-  saveState();
+  state.lastUpdated = serverState.lastUpdated || state.lastUpdated;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 async function syncToServer() {
@@ -835,6 +849,7 @@ async function syncToServer() {
           chatMessages: state.chatMessages,
           selectedSessionId: state.selectedSessionId,
           adminPIN: state.adminPIN,
+          lastUpdated: state.lastUpdated,
         },
       }),
     });
