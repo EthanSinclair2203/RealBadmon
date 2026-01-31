@@ -28,6 +28,7 @@ const state = loadState() ?? seedState();
 state.deviceId = deviceId;
 state.baseUrl = baseUrl;
 state.teamCode = TEAM_CODE;
+state.sessionsView = state.sessionsView || "list";
 
 const captainDraft = {
   title: "",
@@ -58,6 +59,7 @@ function seedState() {
     selectedSessionId: "",
     adminPIN: "4242",
     captainUnlocked: false,
+    sessionsView: "list",
     teamCode: TEAM_CODE,
     deviceId,
     baseUrl
@@ -197,6 +199,7 @@ function render() {
 function renderSessions() {
   const container = $("#tab-sessions");
   const sessions = state.sessions;
+  const isMobile = window.innerWidth <= 600;
 
   const list = sessions.map((s) => {
     const counts = rsvpCounts(s);
@@ -216,31 +219,59 @@ function renderSessions() {
     `;
   }).join("");
 
-  container.innerHTML = `
-    <div class="grid two">
+  if (isMobile) {
+    const showingDetail = state.sessionsView === "detail" && state.selectedSessionId;
+    container.innerHTML = `
       <div class="card">
-        <h3>Upcoming sessions</h3>
+        <div class="row">
+          <h3>${showingDetail ? "Session" : "Upcoming sessions"}</h3>
+          ${showingDetail ? `<button id="back-to-list" class="btn">Back</button>` : ""}
+        </div>
         <div class="grid">
-          ${list || "<div class=\"muted\">No sessions yet. Captain can create one.</div>"}
+          ${showingDetail ? `<div id="session-detail"></div>` : (list || "<div class=\\"muted\\">No sessions yet. Captain can create one.</div>")}
         </div>
       </div>
-      <div class="card" id="session-detail"></div>
-    </div>
-  `;
+    `;
+  } else {
+    container.innerHTML = `
+      <div class="grid two">
+        <div class="card">
+          <h3>Upcoming sessions</h3>
+          <div class="grid">
+            ${list || "<div class=\\"muted\\">No sessions yet. Captain can create one.</div>"}
+          </div>
+        </div>
+        <div class="card" id="session-detail"></div>
+      </div>
+    `;
+  }
 
   $$(".session-card").forEach((card) => {
     card.addEventListener("click", () => {
       state.selectedSessionId = card.dataset.session;
+      state.sessionsView = isMobile ? "detail" : state.sessionsView;
       saveState();
       render();
     });
   });
+
+  if (isMobile && state.sessionsView === "detail") {
+    const back = $("#back-to-list");
+    if (back) {
+      back.addEventListener("click", () => {
+        state.sessionsView = "list";
+        saveState();
+        render();
+      });
+    }
+  }
 
   renderSessionDetail();
 }
 
 function renderSessionDetail() {
   const detail = $("#session-detail");
+  if (!detail) return;
   const session = state.sessions.find((s) => s.id === state.selectedSessionId);
   if (!session) {
     detail.innerHTML = `<div class="muted">Select a session</div>`;
