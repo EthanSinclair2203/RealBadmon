@@ -235,3 +235,29 @@ body {
   .grid.two { grid-template-columns: 1fr; }
   .tabs { grid-template-columns: repeat(2, 1fr); }
 }
+
+@media (max-width: 600px) {
+  .app { padding: 16px; }
+  .topbar { flex-direction: column; gap: 10px; }
+  .brand.centered { width: auto; }
+  .title { font-size: 18px; }
+  .subtitle { font-size: 11px; }
+
+  .tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .tab { font-size: 12px; padding: 8px 10px; }
+
+  .card { padding: 14px; }
+  .session-card { padding: 12px; }
+  .chips { gap: 6px; }
+  .chip { font-size: 11px; padding: 5px 8px; }
+  .row { flex-direction: column; align-items: flex-start; gap: 6px; }
+
+  .chat-bubble { max-width: 90%; }
+  .btn { width: 100%; }
+  .segment { width: 100%; justify-content: center; }
+  .segment button { flex: 1; text-align: center; }
+}
