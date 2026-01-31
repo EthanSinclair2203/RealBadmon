@@ -53,9 +53,12 @@ async function supabaseGetTeam(code) {
       Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
     },
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const text = await res.text();
+    return { error: text || "Supabase get failed" };
+  }
   const data = await res.json();
-  return data[0] || null;
+  return { data: data[0] || null };
 }
 
 async function supabaseUpsertTeam(code, state) {
@@ -162,7 +165,7 @@ const server = http.createServer(async (req, res) => {
     let code = randomCode();
     if (hasSupabase) {
       let existing = await supabaseGetTeam(code);
-      while (existing) {
+      while (existing?.data) {
         code = randomCode();
         existing = await supabaseGetTeam(code);
       }
@@ -177,13 +180,12 @@ const server = http.createServer(async (req, res) => {
     const code = parts[1].toUpperCase();
     if (req.method === "GET" && parts[2] === "state") {
       if (!hasSupabase) return json(res, 500, { error: "Supabase not configured" });
-      let team = await supabaseGetTeam(code);
-      if (!team) {
-        const created = await supabaseUpsertTeam(code, defaultState());
-        if (created?.error) return json(res, 500, { error: created.error });
-        team = created?.data;
+      const teamRes = await supabaseGetTeam(code);
+      if (teamRes?.error) return json(res, 500, { error: teamRes.error });
+      if (!teamRes?.data) {
+        return json(res, 404, { error: "Team not found" });
       }
-      return json(res, 200, { teamCode: code, state: team?.state || defaultState() });
+      return json(res, 200, { teamCode: code, state: teamRes.data.state });
     }
 
     if (req.method === "PUT" && parts[2] === "state") {
@@ -194,8 +196,9 @@ const server = http.createServer(async (req, res) => {
       if (!hasSupabase) return json(res, 500, { error: "Supabase not configured" });
       const body = await parseBody(req);
       if (!body.action) return json(res, 400, { error: "Missing action" });
-      const current = await supabaseGetTeam(code);
-      const baseState = current?.state || defaultState();
+      const currentRes = await supabaseGetTeam(code);
+      if (currentRes?.error) return json(res, 500, { error: currentRes.error });
+      const baseState = currentRes?.data?.state || defaultState();
       const nextState = applyAction(baseState, body.action, body.data || {});
       if (!nextState) return json(res, 400, { error: "Unknown action" });
       const baseSessions = baseState.sessions || [];
