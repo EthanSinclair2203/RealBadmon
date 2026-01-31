@@ -766,6 +766,10 @@ function renderCaptain() {
     deleteBtn.addEventListener("click", async () => {
       const id = $("#edit-id").value;
       if (!id) return;
+      state.sessions = state.sessions.filter((s) => s.id !== id);
+      if (state.selectedSessionId === id) {
+        state.selectedSessionId = state.sessions[0]?.id || "";
+      }
       await apiAction("deleteSession", { sessionId: id });
       captainDraft.editId = "";
       captainDraft.editTitle = "";
@@ -865,31 +869,6 @@ function handleGates() {
 }
 
 function applyServerState(serverState) {
-  const localHasSessions = state.sessions && state.sessions.length > 0;
-  const serverSessions = serverState.sessions || [];
-  if (localHasSessions && serverSessions.length < state.sessions.length) {
-    return;
-  }
-  if (localHasSessions && serverSessions.length) {
-    const localIds = new Set(state.sessions.map((s) => s.id));
-    const serverIds = new Set(serverSessions.map((s) => s.id));
-    let missing = false;
-    for (const id of localIds) {
-      if (!serverIds.has(id)) {
-        missing = true;
-        break;
-      }
-    }
-    if (missing) return;
-  }
-  if (!serverState.lastUpdated && localHasSessions && (!serverState.sessions || serverState.sessions.length === 0)) {
-    return;
-  }
-  if (serverState.lastUpdated && state.lastUpdated) {
-    const incoming = new Date(serverState.lastUpdated);
-    const local = new Date(state.lastUpdated);
-    if (incoming < local) return;
-  }
   state.sessions = (serverState.sessions || []).map((s) => ({
     ...s,
     startTime: new Date(s.startTime),
