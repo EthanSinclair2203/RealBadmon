@@ -29,6 +29,22 @@ state.deviceId = deviceId;
 state.baseUrl = baseUrl;
 state.teamCode = TEAM_CODE;
 
+const captainDraft = {
+  title: "",
+  date: "",
+  time: "",
+  notes: "",
+  formation: Formation.fourOneTwoOneTwoWide.id,
+  revealOffsetMinutes: 10,
+  editId: "",
+  editTitle: "",
+  editDate: "",
+  editTime: "",
+  editNotes: "",
+  editFormation: Formation.fourOneTwoOneTwoWide.id,
+  editRevealOffsetMinutes: 10,
+};
+
 function seedState() {
   const now = new Date();
   const sessions = [
@@ -516,18 +532,27 @@ function renderCaptain() {
 
   const sessionOptions = state.sessions.map((s) => `<option value="${s.id}">${s.title}</option>`).join("");
 
+  if (!captainDraft.date) {
+    const now = new Date();
+    captainDraft.date = now.toISOString().slice(0, 10);
+    captainDraft.time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  }
+
   panel.innerHTML = `
     <div class="grid two">
       <div class="card">
         <h3>Create session</h3>
         <div class="grid">
-          <input id="new-title" class="input" placeholder="Title" />
-          <input id="new-start" class="input" type="datetime-local" />
-          <textarea id="new-notes" class="input" placeholder="Notes"></textarea>
+          <input id="new-title" class="input" placeholder="Title" value="${escapeHtml(captainDraft.title)}" />
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 8px;">
+            <input id="new-date" class="input" type="date" value="${captainDraft.date}" />
+            <input id="new-time" class="input" type="time" value="${captainDraft.time}" />
+          </div>
+          <textarea id="new-notes" class="input" placeholder="Notes">${escapeHtml(captainDraft.notes)}</textarea>
           <select id="new-formation" class="input">
-            ${Object.values(Formation).map((f) => `<option value="${f.id}">${f.id}</option>`).join("")}
+            ${Object.values(Formation).map((f) => `<option value="${f.id}" ${f.id === captainDraft.formation ? "selected" : ""}>${f.id}</option>`).join("")}
           </select>
-          <input id="new-reveal" class="input" type="number" min="5" max="30" step="5" value="10" />
+          <input id="new-reveal" class="input" type="number" min="5" max="30" step="5" value="${captainDraft.revealOffsetMinutes}" />
           <button id="create-session" class="btn primary">Create Session</button>
         </div>
       </div>
@@ -538,15 +563,18 @@ function renderCaptain() {
         <div class="grid" style="margin-top:10px;">
           <select id="edit-id" class="input">
             <option value="">Select session</option>
-            ${sessionOptions}
+            ${state.sessions.map((s) => `<option value="${s.id}" ${s.id === captainDraft.editId ? "selected" : ""}>${s.title}</option>`).join("")}
           </select>
-          <input id="edit-title" class="input" placeholder="Title" />
-          <input id="edit-start" class="input" type="datetime-local" />
-          <textarea id="edit-notes" class="input" placeholder="Notes"></textarea>
+          <input id="edit-title" class="input" placeholder="Title" value="${escapeHtml(captainDraft.editTitle)}" />
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 8px;">
+            <input id="edit-date" class="input" type="date" value="${captainDraft.editDate}" />
+            <input id="edit-time" class="input" type="time" value="${captainDraft.editTime}" />
+          </div>
+          <textarea id="edit-notes" class="input" placeholder="Notes">${escapeHtml(captainDraft.editNotes)}</textarea>
           <select id="edit-formation" class="input">
-            ${Object.values(Formation).map((f) => `<option value="${f.id}">${f.id}</option>`).join("")}
+            ${Object.values(Formation).map((f) => `<option value="${f.id}" ${f.id === captainDraft.editFormation ? "selected" : ""}>${f.id}</option>`).join("")}
           </select>
-          <input id="edit-reveal" class="input" type="number" min="5" max="30" step="5" />
+          <input id="edit-reveal" class="input" type="number" min="5" max="30" step="5" value="${captainDraft.editRevealOffsetMinutes}" />
           <button id="update-session" class="btn">Update Session</button>
         </div>
       </div>
@@ -580,7 +608,9 @@ function renderCaptain() {
 
   $("#create-session").addEventListener("click", () => {
     const title = $("#new-title").value.trim() || "New Session";
-    const start = new Date($("#new-start").value || new Date());
+    const date = $("#new-date").value;
+    const time = $("#new-time").value;
+    const start = combineDateTime(date, time) || new Date();
     const notes = $("#new-notes").value.trim();
     const formation = $("#new-formation").value;
     const revealOffsetMinutes = Number($("#new-reveal").value || 10);
@@ -599,17 +629,23 @@ function renderCaptain() {
     });
     state.selectedSessionId = state.sessions[0].id;
     saveState();
+    captainDraft.title = "";
+    captainDraft.notes = "";
     render();
   });
 
   $("#edit-id").addEventListener("change", (e) => {
     const session = state.sessions.find((s) => s.id === e.target.value);
     if (!session) return;
-    $("#edit-title").value = session.title;
-    $("#edit-start").value = toDateTimeLocal(new Date(session.startTime));
-    $("#edit-notes").value = session.notes;
-    $("#edit-formation").value = session.formation;
-    $("#edit-reveal").value = session.revealOffsetMinutes;
+    const dt = new Date(session.startTime);
+    captainDraft.editId = session.id;
+    captainDraft.editTitle = session.title;
+    captainDraft.editDate = dt.toISOString().slice(0, 10);
+    captainDraft.editTime = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+    captainDraft.editNotes = session.notes;
+    captainDraft.editFormation = session.formation;
+    captainDraft.editRevealOffsetMinutes = session.revealOffsetMinutes;
+    renderCaptain();
   });
 
   $("#update-session").addEventListener("click", () => {
@@ -618,7 +654,7 @@ function renderCaptain() {
     const session = state.sessions.find((s) => s.id === id);
     if (!session) return;
     session.title = $("#edit-title").value.trim() || session.title;
-    session.startTime = new Date($("#edit-start").value || session.startTime);
+    session.startTime = combineDateTime($("#edit-date").value, $("#edit-time").value) || session.startTime;
     session.notes = $("#edit-notes").value.trim();
     session.formation = $("#edit-formation").value;
     session.revealOffsetMinutes = Number($("#edit-reveal").value || session.revealOffsetMinutes);
@@ -651,6 +687,8 @@ function renderCaptain() {
     $("#new-pin").value = "";
     saveState();
   });
+
+  wireCaptainDraftInputs();
 }
 
 function switchTab(tabId, callback) {
@@ -735,7 +773,12 @@ async function syncFromServer() {
     if (!res.ok) return;
     const data = await res.json();
     applyServerState(data.state || {});
-    render();
+    const active = document.activeElement;
+    const captainPanel = $("#tab-captain");
+    const isEditingCaptain = captainPanel && active && captainPanel.contains(active);
+    if (!isEditingCaptain) {
+      render();
+    }
   } catch {
     // ignore
   }
@@ -743,6 +786,58 @@ async function syncFromServer() {
 
 function showPinGate() {
   $("#pin-gate").classList.remove("hidden");
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function combineDateTime(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const [hh, mm] = timeStr.split(":").map(Number);
+  if (!y || !m || !d) return null;
+  const dt = new Date();
+  dt.setFullYear(y, m - 1, d);
+  dt.setHours(hh || 0, mm || 0, 0, 0);
+  return dt;
+}
+
+function wireCaptainDraftInputs() {
+  const set = (key) => (e) => { captainDraft[key] = e.target.value; };
+
+  const newTitle = $("#new-title");
+  const newDate = $("#new-date");
+  const newTime = $("#new-time");
+  const newNotes = $("#new-notes");
+  const newFormation = $("#new-formation");
+  const newReveal = $("#new-reveal");
+
+  if (newTitle) newTitle.addEventListener("input", set("title"));
+  if (newDate) newDate.addEventListener("input", set("date"));
+  if (newTime) newTime.addEventListener("input", set("time"));
+  if (newNotes) newNotes.addEventListener("input", set("notes"));
+  if (newFormation) newFormation.addEventListener("change", set("formation"));
+  if (newReveal) newReveal.addEventListener("input", set("revealOffsetMinutes"));
+
+  const editTitle = $("#edit-title");
+  const editDate = $("#edit-date");
+  const editTime = $("#edit-time");
+  const editNotes = $("#edit-notes");
+  const editFormation = $("#edit-formation");
+  const editReveal = $("#edit-reveal");
+
+  if (editTitle) editTitle.addEventListener("input", set("editTitle"));
+  if (editDate) editDate.addEventListener("input", set("editDate"));
+  if (editTime) editTime.addEventListener("input", set("editTime"));
+  if (editNotes) editNotes.addEventListener("input", set("editNotes"));
+  if (editFormation) editFormation.addEventListener("change", set("editFormation"));
+  if (editReveal) editReveal.addEventListener("input", set("editRevealOffsetMinutes"));
 }
 
 function setupGates() {
