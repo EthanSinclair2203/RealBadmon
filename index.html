@@ -18,10 +18,7 @@
           <div class="subtitle">ProClubs Lineup</div>
         </div>
       </div>
-      <div class="row" style="gap:10px;">
-        <button id="team-button" class="btn">Team</button>
-        <div class="user-pill" id="current-user"></div>
-      </div>
+      <div class="user-pill" id="current-user"></div>
     </header>
 
     <nav class="tabs">
@@ -60,17 +57,6 @@
     </div>
   </div>
 
-  <div id="team-gate" class="modal hidden">
-    <div class="modal-card">
-      <h2>Team Setup</h2>
-      <p>Join or create a team</p>
-      <input id="base-url" type="text" placeholder="Base URL (default: http://localhost:8787)" />
-      <input id="team-code" type="text" placeholder="Team code (leave blank to create)" />
-      <div id="team-error" class="error"></div>
-      <button id="team-join" class="btn">Join Team</button>
-      <button id="team-create" class="btn primary">Create Team</button>
-    </div>
-  </div>
 
   <script src="app.js"></script>
 </body>

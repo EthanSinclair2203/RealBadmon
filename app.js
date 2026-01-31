@@ -4,6 +4,7 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 const STORAGE_KEY = "reeealbadmon.state.v1";
 const BASE_URL_KEY = "reeealbadmon.baseurl";
 const DEVICE_ID_KEY = "reeealbadmon.deviceid";
+const TEAM_CODE = "REALBADMON";
 
 const deviceId = localStorage.getItem(DEVICE_ID_KEY) || crypto.randomUUID();
 localStorage.setItem(DEVICE_ID_KEY, deviceId);
@@ -26,6 +27,7 @@ const defaultPlayers = ["Ethan", "Mason", "Rafa", "Ezra", "Kai", "Jules", "Santi
 const state = loadState() ?? seedState();
 state.deviceId = deviceId;
 state.baseUrl = baseUrl;
+state.teamCode = TEAM_CODE;
 
 function seedState() {
   const now = new Date();
@@ -80,9 +82,9 @@ function seedState() {
     selectedSessionId: sessions[0].id,
     adminPIN: "4242",
     captainUnlocked: false,
-    teamCode: "",
+    teamCode: TEAM_CODE,
     deviceId,
-    baseUrl,
+    baseUrl
   };
 }
 
@@ -668,7 +670,6 @@ function handleTabs() {
 function handleGates() {
   const nameGate = $("#name-gate");
   const pinGate = $("#pin-gate");
-  const teamGate = $("#team-gate");
 
   if (!state.currentUserName) {
     nameGate.classList.remove("hidden");
@@ -679,11 +680,62 @@ function handleGates() {
   if (state.captainUnlocked) {
     pinGate.classList.add("hidden");
   }
+}
 
-  if (!state.teamCode) {
-    teamGate.classList.remove("hidden");
-  } else {
-    teamGate.classList.add("hidden");
+function applyServerState(serverState) {
+  state.sessions = (serverState.sessions || []).map((s) => ({
+    ...s,
+    startTime: new Date(s.startTime),
+  }));
+  state.announcements = (serverState.announcements || []).map((a) => ({
+    ...a,
+    createdAt: new Date(a.createdAt),
+  }));
+  state.feedbackItems = (serverState.feedbackItems || []).map((f) => ({
+    ...f,
+    expiresAt: new Date(f.expiresAt),
+  }));
+  state.chatMessages = (serverState.chatMessages || []).map((m) => ({
+    ...m,
+    createdAt: new Date(m.createdAt),
+  }));
+  state.selectedSessionId = serverState.selectedSessionId || state.sessions[0]?.id || "";
+  state.adminPIN = serverState.adminPIN || state.adminPIN;
+  saveState();
+}
+
+async function syncToServer() {
+  try {
+    await fetch(`${state.baseUrl}/teams/${TEAM_CODE}/state`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deviceId,
+        name: state.currentUserName || "Player",
+        state: {
+          sessions: state.sessions,
+          announcements: state.announcements,
+          feedbackItems: state.feedbackItems,
+          chatMessages: state.chatMessages,
+          selectedSessionId: state.selectedSessionId,
+          adminPIN: state.adminPIN,
+        },
+      }),
+    });
+  } catch {
+    // silent offline fail
+  }
+}
+
+async function syncFromServer() {
+  try {
+    const res = await fetch(`${state.baseUrl}/teams/${TEAM_CODE}/state`);
+    if (!res.ok) return;
+    const data = await res.json();
+    applyServerState(data.state || {});
+    render();
+  } catch {
+    // ignore
   }
 }
 
@@ -713,127 +765,11 @@ function setupGates() {
     }
   });
 
-  $("#team-button").addEventListener("click", () => {
-    $("#team-gate").classList.remove("hidden");
-    $("#base-url").value = state.baseUrl || baseUrl;
-    $("#team-code").value = state.teamCode || "";
-  });
-
-  $("#team-join").addEventListener("click", async () => {
-    const url = ($("#base-url").value || baseUrl).trim();
-    const code = ($("#team-code").value || "").trim().toUpperCase();
-    if (!url || !code) {
-      $("#team-error").textContent = "Enter a base URL and team code.";
-      return;
-    }
-    try {
-      baseUrl = url;
-      state.baseUrl = url;
-      localStorage.setItem(BASE_URL_KEY, url);
-      const res = await fetch(`${baseUrl}/teams/${code}/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId, name: state.currentUserName || "Player" }),
-      });
-      if (!res.ok) throw new Error("Join failed");
-      const data = await res.json();
-      applyServerState(data.state, code);
-      $("#team-gate").classList.add("hidden");
-      $("#team-error").textContent = "";
-    } catch (err) {
-      $("#team-error").textContent = "Could not join team.";
-    }
-  });
-
-  $("#team-create").addEventListener("click", async () => {
-    const url = ($("#base-url").value || baseUrl).trim();
-    if (!url) {
-      $("#team-error").textContent = "Enter a base URL.";
-      return;
-    }
-    try {
-      baseUrl = url;
-      state.baseUrl = url;
-      localStorage.setItem(BASE_URL_KEY, url);
-      const res = await fetch(`${baseUrl}/teams`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId, name: state.currentUserName || "Captain" }),
-      });
-      if (!res.ok) throw new Error("Create failed");
-      const data = await res.json();
-      applyServerState(data.state, data.teamCode);
-      $("#team-gate").classList.add("hidden");
-      $("#team-error").textContent = "";
-    } catch (err) {
-      $("#team-error").textContent = "Could not create team.";
-    }
-  });
-}
-
-function applyServerState(serverState, teamCode) {
-  state.sessions = (serverState.sessions || []).map((s) => ({
-    ...s,
-    startTime: new Date(s.startTime),
-  }));
-  state.announcements = (serverState.announcements || []).map((a) => ({
-    ...a,
-    createdAt: new Date(a.createdAt),
-  }));
-  state.feedbackItems = (serverState.feedbackItems || []).map((f) => ({
-    ...f,
-    expiresAt: new Date(f.expiresAt),
-  }));
-  state.chatMessages = (serverState.chatMessages || []).map((m) => ({
-    ...m,
-    createdAt: new Date(m.createdAt),
-  }));
-  state.selectedSessionId = serverState.selectedSessionId || state.sessions[0]?.id || "";
-  state.adminPIN = serverState.adminPIN || state.adminPIN;
-  state.teamCode = teamCode || serverState.teamCode || state.teamCode;
-  saveState();
-}
-
-async function syncToServer() {
-  if (!state.teamCode) return;
-  try {
-    await fetch(`${state.baseUrl}/teams/${state.teamCode}/state`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        deviceId,
-        name: state.currentUserName || "Player",
-        state: {
-          sessions: state.sessions,
-          announcements: state.announcements,
-          feedbackItems: state.feedbackItems,
-          chatMessages: state.chatMessages,
-          selectedSessionId: state.selectedSessionId,
-          adminPIN: state.adminPIN,
-        },
-      }),
-    });
-  } catch {
-    // Silent fail for offline/local usage.
-  }
 }
 
 function toDateTimeLocal(date) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-async function syncFromServer() {
-  if (!state.teamCode) return;
-  try {
-    const res = await fetch(`${state.baseUrl}/teams/${state.teamCode}/state`);
-    if (!res.ok) return;
-    const data = await res.json();
-    applyServerState(data.state, state.teamCode);
-    render();
-  } catch {
-    // ignore
-  }
 }
 
 handleTabs();

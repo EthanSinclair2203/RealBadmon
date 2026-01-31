@@ -91,7 +91,18 @@ const server = http.createServer(async (req, res) => {
   if (parts[0] === "teams" && parts[1]) {
     const code = parts[1].toUpperCase();
     const data = readData();
-    const team = data.teams[code];
+    let team = data.teams[code];
+
+    if (!team && (req.method === "GET" || req.method === "PUT") && parts[2] === "state") {
+      team = data.teams[code] = {
+        teamCode: code,
+        adminDeviceId: "",
+        members: {},
+        state: defaultState(),
+        createdAt: new Date().toISOString(),
+      };
+      writeData(data);
+    }
 
     if (!team) {
       return json(res, 404, { error: "Team not found" });
