@@ -137,7 +137,7 @@ function applyAction(current, action, data) {
       return state;
     }
     default:
-      return state;
+      return null;
   }
 }
 
@@ -189,9 +189,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && parts[2] === "action") {
       if (!hasSupabase) return json(res, 500, { error: "Supabase not configured" });
       const body = await parseBody(req);
+      if (!body.action) return json(res, 400, { error: "Missing action" });
       const current = await supabaseGetTeam(code);
       const baseState = current?.state || defaultState();
       const nextState = applyAction(baseState, body.action, body.data || {});
+      if (!nextState) return json(res, 400, { error: "Unknown action" });
       nextState.lastUpdated = new Date().toISOString();
       const updated = await supabaseUpsertTeam(code, nextState);
       if (updated?.error) return json(res, 500, { error: updated.error });
