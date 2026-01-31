@@ -8,7 +8,7 @@ const DEVICE_ID_KEY = "reeealbadmon.deviceid";
 const deviceId = localStorage.getItem(DEVICE_ID_KEY) || crypto.randomUUID();
 localStorage.setItem(DEVICE_ID_KEY, deviceId);
 
-let baseUrl = localStorage.getItem(BASE_URL_KEY) || "http://localhost:8787";
+let baseUrl = localStorage.getItem(BASE_URL_KEY) || "https://realbadmon.onrender.com";
 
 const Formation = {
   fourOneTwoOneTwoWide: {
